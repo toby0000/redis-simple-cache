@@ -338,6 +338,23 @@ def cache_it(limit=10000, expire=DEFAULT_EXPIRY, cache=None,
             # the expire value of the passed cache object
             expire = None
 
+        def get_cache_key(*args, **kwargs):
+            serializer = json if use_json else pickle
+            #  Key will be either a md5 hash or just pickle object,
+            #  in the form of `function name`:`key`
+            key = cache.get_hash(serializer.dumps([args, kwargs]))
+            cache_key = '{func_name}:{key}'.format(func_name=function.__name__,
+                                                   key=key)
+            return cache_key
+
+        def update(*args, **kwargs):
+            delete(*args, **kwargs)
+            return func(*args, **kwargs)
+
+        def delete(*args, **kwargs):
+            cache_key = get_cache_key(*args, **kwargs)
+            cache.invalidate(cache_key)
+
         @wraps(function)
         def func(*args, **kwargs):
             #  Handle cases where caching is down or otherwise not available.
@@ -345,20 +362,13 @@ def cache_it(limit=10000, expire=DEFAULT_EXPIRY, cache=None,
                 result = function(*args, **kwargs)
                 return result
 
-            serializer = json if use_json else pickle
             fetcher = cache.get_json if use_json else cache.get_pickle
             storer = cache.store_json if use_json else cache.store_pickle
 
-            #  Key will be either a md5 hash or just pickle object,
-            #  in the form of `function name`:`key`
-            key = cache.get_hash(serializer.dumps([args, kwargs]))
-            cache_key = '{func_name}:{key}'.format(func_name=function.__name__,
-                                                   key=key)
-
+            cache_key = get_cache_key(*args, **kwargs)
             if namespace:
                 cache_key = '{namespace}:{key}'.format(namespace=namespace,
                                                        key=cache_key)
-
             try:
                 return fetcher(cache_key)
             except (ExpiredKeyException, CacheMissException) as e:
@@ -379,6 +389,8 @@ def cache_it(limit=10000, expire=DEFAULT_EXPIRY, cache=None,
 
             return result
 
+        func.update = update
+        func.delete = delete
         return func
 
     return decorator
