@@ -53,7 +53,7 @@ class SimpleCacheTest(TestCase):
     def test_store_retrieve(self):
         self.c.store("foo", "bar")
         foo = self.c.get("foo")
-        self.assertEqual(foo, "bar")
+        self.assertEqual(foo, b"bar")
 
     def test_json(self):
         payload = {"example": "data"}
@@ -177,8 +177,8 @@ class SimpleCacheTest(TestCase):
     def test_cache_limit(self):
         for i in range(100):
             self.c.store("foo%d" % i, "foobar")
-            self.failUnless(len(self.c) <= 10)
-            self.failUnless(len(self.c.keys()) <= 10)
+            self.assertTrue(len(self.c) <= 10)
+            self.assertTrue(len(self.c.keys()) <= 10)
 
     def test_flush(self):
         connection = self.c.connection
@@ -192,8 +192,8 @@ class SimpleCacheTest(TestCase):
         self.assertTrue(len_before > 0)
         self.assertEqual(len_after, 0)
         self.assertTrue(len_keys_before > 0)
-        self.assertEqual(len_keys_after, '42')
-        self.assertEqual(connection.get("will_not_be_deleted"), '42')
+        self.assertEqual(len_keys_after, b'42')
+        self.assertEqual(connection.get("will_not_be_deleted"), b'42')
         connection.delete("will_not_be_deleted")
 
     def test_flush_namespace(self):
@@ -205,7 +205,7 @@ class SimpleCacheTest(TestCase):
         self.c.flush_namespace('foo')
         len_keys_after = len(self.c.keys())
         self.assertEqual((len_keys_before - len_keys_after), 2)
-        self.assertEqual(self.c.get('fii'), 'bur')
+        self.assertEqual(self.c.get('fii'), b'bur')
         self.assertRaises(CacheMissException, self.c.get, "foo:one")
         self.assertRaises(CacheMissException, self.c.get, "foo:two")
         self.c.flush()
@@ -249,17 +249,17 @@ class SimpleCacheTest(TestCase):
         self.c.store("a2", "aa")
         self.c.store("a3", "aaa")
         d = self.c.mget(["a1", "a2", "a3"])
-        self.assertEqual(d["a1"], "a")
-        self.assertEqual(d["a2"], "aa")
-        self.assertEqual(d["a3"], "aaa")
+        self.assertEqual(d["a1"], b"a")
+        self.assertEqual(d["a2"], b"aa")
+        self.assertEqual(d["a3"], b"aaa")
 
     def test_mget_nonexistant_key(self):
         self.c.store("b1", "b")
         self.c.store("b3", "bbb")
         d = self.c.mget(["b1", "b2", "b3"])
-        self.assertEqual(d["b1"], "b")
+        self.assertEqual(d["b1"], b"b")
         self.assertTrue("b2" not in d)
-        self.assertEqual(d["b3"], "bbb")
+        self.assertEqual(d["b3"], b"bbb")
 
     def test_mget_expiry(self):
         self.c.store("c1", "c")
@@ -267,9 +267,9 @@ class SimpleCacheTest(TestCase):
         self.c.store("c3", "ccc")
         time.sleep(1.1)
         d = self.c.mget(["c1", "c2", "c3"])
-        self.assertEqual(d["c1"], "c")
+        self.assertEqual(d["c1"], b"c")
         self.assertTrue("c2" not in d)
-        self.assertEqual(d["c3"], "ccc")
+        self.assertEqual(d["c3"], b"ccc")
 
     def test_mget_json(self):
         payload_a1 = {"example_a1": "data_a1"}
@@ -296,9 +296,9 @@ class SimpleCacheTest(TestCase):
         self.c.store("d3", "ddd")
         self.c.invalidate("d2")
         d = self.c.mget(["d1", "d2", "d3"])
-        self.assertEqual(d["d1"], "d")
-        self.assertTrue("d2" not in d)
-        self.assertEqual(d["d3"], "ddd")
+        self.assertEqual(d["d1"], b"d")
+        self.assertTrue(b"d2" not in d)
+        self.assertEqual(d["d3"], b"ddd")
 
     def tearDown(self):
         self.c.flush()
